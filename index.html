@@ -15,6 +15,7 @@
       background: #111;
       color: white;
       font-family: Arial, sans-serif;
+      text-align: center;
     }
 
     button {
@@ -30,17 +31,16 @@
       box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
     }
 
-    #counter {
-      margin-top: 25px;
-      font-size: 24px;
+    #counter, #globalCounter {
+      margin-top: 20px;
+      font-size: 22px;
     }
 
     #message {
-      margin-top: 10px;
+      margin-top: 12px;
       font-size: 18px;
-      opacity: 0.8;
-      text-align: center;
-      max-width: 320px;
+      opacity: 0.85;
+      max-width: 420px;
     }
   </style>
 
@@ -53,46 +53,37 @@
 
   <button id="mainButton">DO NOT PRESS</button>
 
-  <div id="counter">Pressed: 0 times</div>
+  <div id="counter">You pressed: 0 times</div>
+  <div id="globalCounter">Everyone pressed: loading…</div>
   <div id="message">The internet cannot be trusted.</div>
 
 <script>
-/* ---------------- FIREBASE INIT ---------------- */
-
-const firebaseConfig = {
+/* -------------------- FIREBASE SETUP -------------------- */
+firebase.initializeApp({
   apiKey: "AIzaSyCE-7BlU_HfYRIeGciR76o4I78DT0qRk6E",
   authDomain: "do-not-press-cbc0e.firebaseapp.com",
-  projectId: "do-not-press-cbc0e",
-  storageBucket: "do-not-press-cbc0e.firebasestorage.app",
-  messagingSenderId: "386037604562",
-  appId: "1:386037604562:web:34ed1140c5fbaed1e48d0b"
-};
+  projectId: "do-not-press-cbc0e"
+});
 
-firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const globalRef = db.collection("global").doc("stats");
 
-/* Create doc if missing */
-globalRef.set({ totalPresses: 0 }, { merge: true });
-
-/* ---------------- LOCAL USER STATE ---------------- */
-
+/* -------------------- LOCAL USER STATE -------------------- */
 let count = parseInt(localStorage.getItem("pressCount")) || 0;
-localStorage.setItem("pressCount", count);
+let lastClickTime = Date.now();
 
-/* ---------------- UI ---------------- */
-
+/* -------------------- ELEMENTS -------------------- */
 const button = document.getElementById("mainButton");
 const counter = document.getElementById("counter");
+const globalCounter = document.getElementById("globalCounter");
 const message = document.getElementById("message");
 
-counter.innerText = `Pressed: ${count} times`;
+counter.innerText = `You pressed: ${count} times`;
 
-/* ---------------- MESSAGE ENGINE ---------------- */
-
+/* -------------------- MESSAGE SYSTEM -------------------- */
 const tones = {
-  low: ["Okay.", "Alright.", "Hmm.", "So.", "Right.", "Noted."],
-  medium: ["Again?", "Really?", "Careful.", "Interesting.", "You came back."],
+  low: ["Okay.", "Hmm.", "Alright.", "So.", "Right."],
+  medium: ["Again?", "Really?", "Careful.", "Interesting.", "Noted."],
   high: ["Seriously.", "Why though.", "This is excessive.", "You’re committed."],
   extreme: ["Stop.", "This is unhinged.", "I’m concerned.", "You chose chaos."]
 };
@@ -115,37 +106,62 @@ const endings = [
   "as expected."
 ];
 
+const rareMessages = [
+  "You weren’t supposed to see this.",
+  "Okay… now I’m watching.",
+  "Statistically, this was inevitable.",
+  "You could’ve stopped. You didn’t."
+];
+
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function updateMessage(c) {
+function updateMessage(c, speed) {
   let tone;
   if (c < 5) tone = tones.low;
   else if (c < 15) tone = tones.medium;
   else if (c < 40) tone = tones.high;
   else tone = tones.extreme;
 
-  message.innerText = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
+  let sentence = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
+
+  if (speed < 400) sentence += " That was fast.";
+  else if (speed > 3000) sentence += " You hesitated.";
+
+  if (Math.random() < 0.05) sentence = pick(rareMessages);
+
+  message.innerText = sentence;
 }
 
-/* ---------------- CLICK HANDLER ---------------- */
-
+/* -------------------- CLICK HANDLER -------------------- */
 button.addEventListener("click", async () => {
+  const now = Date.now();
+  const speed = now - lastClickTime;
+  lastClickTime = now;
+
   count++;
   localStorage.setItem("pressCount", count);
-  counter.innerText = `Pressed: ${count} times`;
-  updateMessage(count);
+  counter.innerText = `You pressed: ${count} times`;
+
+  updateMessage(count, speed);
 
   try {
     await globalRef.update({
       totalPresses: firebase.firestore.FieldValue.increment(1)
     });
   } catch (e) {
-    console.warn("Firebase unavailable");
+    console.error(e);
   }
 });
 
+/* -------------------- GLOBAL LIVE COUNTER -------------------- */
+globalRef.onSnapshot(doc => {
+  if (doc.exists) {
+    globalCounter.innerText =
+      `Everyone pressed: ${doc.data().totalPresses.toLocaleString()} times`;
+  }
+});
 </script>
 
 </body>

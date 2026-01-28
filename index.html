@@ -31,9 +31,9 @@
       box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
     }
 
-    #counter, #globalCounter {
-      margin-top: 20px;
-      font-size: 22px;
+    #globalCounter {
+      margin-top: 24px;
+      font-size: 24px;
     }
 
     #message {
@@ -53,8 +53,7 @@
 
   <button id="mainButton">DO NOT PRESS</button>
 
-  <div id="counter">You pressed: 0 times</div>
-  <div id="globalCounter">Everyone pressed: loading…</div>
+  <div id="globalCounter">Pressed globally: loading…</div>
   <div id="message">The internet cannot be trusted.</div>
 
 <script>
@@ -68,126 +67,56 @@ firebase.initializeApp({
 const db = firebase.firestore();
 const globalRef = db.collection("global").doc("stats");
 
-// Ensure doc exists
+// Ensure document exists
 globalRef.set({ totalPresses: 0 }, { merge: true });
-
-/* -------------------- LOCAL USER -------------------- */
-let count = parseInt(localStorage.getItem("pressCount")) || 0;
-let lastClickTime = Date.now();
-
-let seenMilestones = JSON.parse(
-  localStorage.getItem("seenGlobalMilestones") || "[]"
-);
 
 /* -------------------- ELEMENTS -------------------- */
 const button = document.getElementById("mainButton");
-const counter = document.getElementById("counter");
 const globalCounter = document.getElementById("globalCounter");
 const message = document.getElementById("message");
 
-counter.innerText = `You pressed: ${count} times`;
-
-/* -------------------- MESSAGE SYSTEM -------------------- */
-const tones = {
-  low: ["Okay.", "Hmm.", "Alright.", "So."],
-  medium: ["Again?", "Really?", "Careful.", "Interesting."],
-  high: ["Seriously.", "Why though.", "This is excessive."],
-  extreme: ["Stop.", "This is unhinged.", "You chose chaos."]
-};
-
-const actions = [
-  "you pressed the button",
-  "you clicked again",
-  "that just happened",
-  "you did that",
-  "another press registered"
-];
-
-const endings = [
-  "for no reason.",
-  "without hesitation.",
-  "again.",
-  "as expected.",
-  "on purpose."
-];
-
-const rareMessages = [
-  "You weren’t supposed to see this.",
-  "Okay… now I’m watching.",
-  "Statistically, this was inevitable.",
-  "You could’ve stopped."
+/* -------------------- NORMAL MESSAGES -------------------- */
+const normalMessages = [
+  "Someone ignored the warning.",
+  "That was unnecessary.",
+  "Another press. Interesting choice.",
+  "You didn’t have to do that.",
+  "Curiosity won.",
+  "Still pressing it.",
+  "No one is stopping.",
+  "This is why we can’t have nice things."
 ];
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function updateMessage(c, speed) {
-  let tone =
-    c < 5 ? tones.low :
-    c < 15 ? tones.medium :
-    c < 40 ? tones.high :
-    tones.extreme;
-
-  let text = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
-
-  if (speed < 400) text += " That was fast.";
-  if (speed > 3000) text += " You hesitated.";
-
-  if (Math.random() < 0.05) text = pick(rareMessages);
-
-  message.innerText = text;
-}
-
-/* -------------------- GLOBAL MILESTONES -------------------- */
+/* -------------------- MILESTONE LOGIC -------------------- */
 function milestoneMessage(total) {
-  if (total === 1000) {
-    return "1,000 presses. This is officially a problem.";
+  // Every 1,000
+  if (total % 1000 === 0 && total < 100000) {
+    return `${total.toLocaleString()} presses. This is escalating.`;
   }
-  if (total === 2000) {
-    return "2,000 presses. Nobody learned anything.";
+
+  // Major milestones
+  if (total === 100000) return "100,000 presses. This stopped being funny.";
+  if (total === 500000) return "500,000 presses. Half a million bad decisions.";
+  if (total === 1000000) return "1,000,000 presses. One million. Sit with that.";
+  if (total % 1000000 === 0 && total > 1000000) {
+    return `${total / 1000000} million presses. No one learned anything.`;
   }
-  return `${total.toLocaleString()} presses reached. Still going.`;
+
+  return null;
 }
 
-function checkMilestone(total) {
-  if (total < 1000) return;
-  if (total % 500 !== 0) return;
-  if (seenMilestones.includes(total)) return;
-
-  message.innerText = milestoneMessage(total);
-
-  // Button reaction
-  button.style.transform = "scale(0.9)";
-  setTimeout(() => {
-    button.style.transform = "scale(1)";
-  }, 180);
-
-  seenMilestones.push(total);
-  localStorage.setItem(
-    "seenGlobalMilestones",
-    JSON.stringify(seenMilestones)
-  );
-}
-
-/* -------------------- CLICK HANDLER -------------------- */
+/* -------------------- CLICK -------------------- */
 button.addEventListener("click", async () => {
-  const now = Date.now();
-  const speed = now - lastClickTime;
-  lastClickTime = now;
-
-  count++;
-  localStorage.setItem("pressCount", count);
-  counter.innerText = `You pressed: ${count} times`;
-
-  updateMessage(count, speed);
-
   try {
     await globalRef.update({
       totalPresses: firebase.firestore.FieldValue.increment(1)
     });
   } catch (e) {
-    console.warn("Firebase unavailable");
+    console.error("Firebase error", e);
   }
 });
 
@@ -197,9 +126,10 @@ globalRef.onSnapshot(doc => {
 
   const total = doc.data().totalPresses;
   globalCounter.innerText =
-    `Everyone pressed: ${total.toLocaleString()} times`;
+    `Pressed globally: ${total.toLocaleString()} times`;
 
-  checkMilestone(total);
+  const milestone = milestoneMessage(total);
+  message.innerText = milestone ? milestone : pick(normalMessages);
 });
 </script>
 

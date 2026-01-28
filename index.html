@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Do Not Press</title>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    button {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: red;
+      color: white;
+      font-size: 22px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+    }
+
+    #counter {
+      margin-top: 25px;
+      font-size: 24px;
+    }
+
+    #message {
+      margin-top: 10px;
+      font-size: 18px;
+      opacity: 0.8;
+      text-align: center;
+      max-width: 320px;
+    }
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+
+  <button id="mainButton">DO NOT PRESS</button>
+
+  <div id="counter">Pressed: 0 times</div>
+  <div id="message">The internet cannot be trusted.</div>
+
+<script>
+/* ---------------- FIREBASE INIT ---------------- */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCE-7BlU_HfYRIeGciR76o4I78DT0qRk6E",
+  authDomain: "do-not-press-cbc0e.firebaseapp.com",
+  projectId: "do-not-press-cbc0e",
+  storageBucket: "do-not-press-cbc0e.firebasestorage.app",
+  messagingSenderId: "386037604562",
+  appId: "1:386037604562:web:34ed1140c5fbaed1e48d0b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const globalRef = db.collection("global").doc("stats");
+
+/* Create doc if missing */
+globalRef.set({ totalPresses: 0 }, { merge: true });
+
+/* ---------------- LOCAL USER STATE ---------------- */
+
+let count = parseInt(localStorage.getItem("pressCount")) || 0;
+localStorage.setItem("pressCount", count);
+
+/* ---------------- UI ---------------- */
+
+const button = document.getElementById("mainButton");
+const counter = document.getElementById("counter");
+const message = document.getElementById("message");
+
+counter.innerText = `Pressed: ${count} times`;
+
+/* ---------------- MESSAGE ENGINE ---------------- */
+
+const tones = {
+  low: ["Okay.", "Alright.", "Hmm.", "So.", "Right.", "Noted."],
+  medium: ["Again?", "Really?", "Careful.", "Interesting.", "You came back."],
+  high: ["Seriously.", "Why though.", "This is excessive.", "You’re committed."],
+  extreme: ["Stop.", "This is unhinged.", "I’m concerned.", "You chose chaos."]
+};
+
+const actions = [
+  "you pressed the button",
+  "you clicked again",
+  "that just happened",
+  "you did that",
+  "another press registered",
+  "you came back for more"
+];
+
+const endings = [
+  "for no reason.",
+  "without hesitation.",
+  "like it matters.",
+  "on purpose.",
+  "again.",
+  "as expected."
+];
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function updateMessage(c) {
+  let tone;
+  if (c < 5) tone = tones.low;
+  else if (c < 15) tone = tones.medium;
+  else if (c < 40) tone = tones.high;
+  else tone = tones.extreme;
+
+  message.innerText = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
+}
+
+/* ---------------- CLICK HANDLER ---------------- */
+
+button.addEventListener("click", async () => {
+  count++;
+  localStorage.setItem("pressCount", count);
+  counter.innerText = `Pressed: ${count} times`;
+  updateMessage(count);
+
+  try {
+    await globalRef.update({
+      totalPresses: firebase.firestore.FieldValue.increment(1)
+    });
+  } catch (e) {
+    console.warn("Firebase unavailable");
+  }
+});
+
+</script>
+
+</body>
+</html>

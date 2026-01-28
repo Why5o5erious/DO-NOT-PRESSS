@@ -29,6 +29,64 @@
       border: none;
       cursor: pointer;
       box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animation classes */
+    .button-press-animation {
+      animation: pressEffect 0.3s ease-out;
+    }
+
+    .button-pulse-animation {
+      animation: pulseEffect 0.5s ease-out;
+    }
+
+    @keyframes pressEffect {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+      }
+      50% {
+        transform: scale(0.9);
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+        background: #ff3333;
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+        background: red;
+      }
+    }
+
+    @keyframes pulseEffect {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 25px rgba(255, 0, 0, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+      }
+    }
+
+    /* Ripple effect */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      transform: scale(0);
+      animation: ripple-animation 0.6s linear;
+      pointer-events: none;
+    }
+
+    @keyframes ripple-animation {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
     }
 
     #globalCounter {
@@ -41,6 +99,7 @@
       font-size: 18px;
       opacity: 0.85;
       max-width: 420px;
+      min-height: 30px;
     }
   </style>
 
@@ -75,6 +134,44 @@ const button = document.getElementById("mainButton");
 const globalCounter = document.getElementById("globalCounter");
 const message = document.getElementById("message");
 
+/* -------------------- BUTTON ANIMATION -------------------- */
+function animateButton(event) {
+  // Press animation
+  button.classList.add('button-press-animation');
+  
+  // Create ripple effect
+  const ripple = document.createElement('span');
+  ripple.classList.add('ripple');
+  button.appendChild(ripple);
+  
+  // Get click position
+  const rect = button.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const x = event.clientX - rect.left - size / 2;
+  const y = event.clientY - rect.top - size / 2;
+  
+  // Set ripple position and size
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  
+  // Add pulse animation after press
+  setTimeout(() => {
+    button.classList.add('button-pulse-animation');
+  }, 300);
+  
+  // Remove animation classes after they complete
+  setTimeout(() => {
+    button.classList.remove('button-press-animation');
+    button.classList.remove('button-pulse-animation');
+    
+    // Remove ripple element after animation
+    if (ripple.parentElement === button) {
+      button.removeChild(ripple);
+    }
+  }, 800);
+}
+
 /* -------------------- NORMAL MESSAGES -------------------- */
 const normalMessages = [
   "Nothing changed. But you clicked.",
@@ -90,39 +187,36 @@ const normalMessages = [
   "You ignored the warning.",
   "The button sighed.",
   "Bold move.",
-  me: *presses it* also me: why did I do that",
+  "me: *presses it* also me: why did I do that",
   "nobody:\nabsolutely nobody:\nyou: presses the button",
   "this seemed like a good idea at the time",
-  "I’ll just press it once\n*presses it again*",
-  "me pressing this like it will fix my life",
+  "I'll just press it once\n*presses it again*",
+  "me: pressing this like it will fix my life",
   "I had free will and still chose this",
   "brain empty\nfinger press button",
-  "I don’t know what I expected",
+  "I don't know what I expected",
   "this is my villain origin story",
   "I regret nothing (I regret everything)",
-
-  "me: I’ll stop\nalso me:",
+  "me: I'll stop\n also me:",
   "pressing this like it owes me money",
   "this button has main character energy",
   "I saw the warning and pressed anyway",
   "me when button:",
-  "this wasn’t part of the plan",
+  "this wasn't part of the plan",
   "I came. I saw. I pressed.",
   "this says a lot about society",
   "I thought something cool would happen",
-  "it didn’t",
-
+  "it didn't",
   "one does not simply stop pressing",
   "this button living rent-free in my head",
-  "me vs self-control\nself-control lost",
-  "I’m just here to see what happens",
-  "this is why we can’t have nice things",
-  "I pressed it ironically. Now it’s serious.",
+  "me vs self-control \n self-control lost",
+  "I'm just here to see what happens",
+  "this is why we can't have nice things",
+  "I pressed it ironically. Now it's serious.",
   "my ancestors watching this",
   "this felt personal",
   "I trusted the button",
   "the button betrayed me",
-
   "me clicking this at 3am:",
   "I should not be here",
   "this is between me and the button",
@@ -132,11 +226,10 @@ const normalMessages = [
   "this is a cry for help",
   "I need to stop",
   "I will not stop",
-  "I’m built different (incorrectly)",
-
+  "I'm built different (incorrectly)",
   "this button really said: try me",
   "I pressed it just to be safe",
-  "if pressing this is wrong I don’t wanna be right",
+  "if pressing this is wrong I don't wanna be right",
   "me thinking this will unlock something",
   "narrator: it did not",
   "this is why tutorials exist",
@@ -155,8 +248,8 @@ const normalMessages = [
   "Another press logged.",
   "You felt compelled.",
   "The internet judges you.",
-  "This could’ve been avoided.",
-  "You didn’t hesitate.",
+  "This could've been avoided.",
+  "You didn't hesitate.",
   "Here we go again.",
   "That was on purpose.",
   "You knew what would happen.",
@@ -166,13 +259,13 @@ const normalMessages = [
   "You pressed the forbidden thing.",
   "No consequences. Yet.",
   "The button is tired.",
-  "That’s on you.",
+  "That's on you.",
   "You woke it up.",
   "Nothing improved.",
   "This was predictable.",
   "The button accepts your offering.",
   "Another pointless action completed.",
-  "You’re persistent.",
+  "You're persistent.",
   "Why though.",
   "Again, huh.",
   "The cycle continues.",
@@ -180,15 +273,15 @@ const normalMessages = [
   "No achievement unlocked.",
   "You pressed it anyway.",
   "Still no prize.",
-  "That didn’t help.",
-  "You’re committed now.",
+  "That didn't help.",
+  "You're committed now.",
   "You could stop.",
-  "But you didn’t.",
+  "But you didn't.",
   "The button blinked.",
-  "This won’t end well.",
-  "We’re keeping count.",
+  "This won't end well.",
+  "We're keeping count.",
   "Someone warned you.",
-  "You’re testing limits.",
+  "You're testing limits.",
   "You enjoy this.",
   "This is between you and the button.",
   "Another tap into the void.",
@@ -205,7 +298,7 @@ const normalMessages = [
   "You pressed with confidence.",
   "No undo.",
   "The button approves?",
-  "You didn’t resist.",
+  "You didn't resist.",
   "Here you are again.",
   "The button is unimpressed.",
   "This is routine now.",
@@ -213,7 +306,7 @@ const normalMessages = [
   "You pressed and moved on.",
   "Another one logged.",
   "The button exists because of you.",
-  "You could’ve stopped.",
+  "You could've stopped.",
   "Yet here we are.",
   "The button keeps score.",
   "This is your contribution.",
@@ -225,15 +318,15 @@ const normalMessages = [
   "You returned.",
   "The temptation won.",
   "This again, really?",
-  "The button doesn’t forget.",
+  "The button doesn't forget.",
   "That was fast.",
-  "You’re developing a habit.",
+  "You're developing a habit.",
   "Nothing special happened.",
   "But you clicked.",
   "The button hums quietly.",
   "This is fine.",
-  "You’re doing great.",
-  "At least you’re consistent.",
+  "You're doing great.",
+  "At least you're consistent.",
   "No applause.",
   "You pressed confidently.",
   "This has consequences somewhere.",
@@ -247,7 +340,7 @@ const normalMessages = [
   "The button accepts your choice.",
   "No further instructions.",
   "This is the experience.",
-  "You’re part of the data now.",
+  "You're part of the data now.",
   "Button press confirmed.",
   "Nothing remarkable occurred.",
   "You stayed curious.",
@@ -259,9 +352,9 @@ const normalMessages = [
   "The button exists for this moment.",
   "You fulfilled its purpose.",
   "Another click, another record.",
-  "This doesn’t get old.",
+  "This doesn't get old.",
   "Or does it?",
-  "You’re still here.",
+  "You're still here.",
   "You pressed again.",
   "No surprise.",
   "The button noticed you.",
@@ -278,14 +371,14 @@ const normalMessages = [
   "You delivered.",
   "No drama.",
   "Just a click.",
-  "You’re consistent.",
+  "You're consistent.",
   "The button thrives on this.",
-  "You’re feeding it.",
+  "You're feeding it.",
   "This is mutual now.",
   "Another moment recorded.",
   "Button is satisfied.",
   "You could stop anytime.",
-  "But won’t.",
+  "But won't.",
   "We both know that.",
   "This is routine.",
   "Button remains unchanged.",
@@ -306,14 +399,13 @@ const normalMessages = [
   "This is commitment.",
   "The button exists because you press it.",
   "A perfect loop.",
-  "You’re still pressing.",
+  "You're still pressing.",
   "The button nods.",
   "This continues.",
   "You are here.",
   "So is the button.",
   "And it waits."
 ];
-
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -337,14 +429,20 @@ function milestoneMessage(total) {
   return null;
 }
 
-/* -------------------- CLICK -------------------- */
-button.addEventListener("click", async () => {
+/* -------------------- CLICK HANDLER -------------------- */
+button.addEventListener("click", async (event) => {
+  // Trigger animation immediately for responsive feedback
+  animateButton(event);
+  
   try {
+    // Update Firebase counter
     await globalRef.update({
       totalPresses: firebase.firestore.FieldValue.increment(1)
     });
   } catch (e) {
     console.error("Firebase error", e);
+    // Even if Firebase fails, still show animation
+    message.innerText = "Connection lost, but press counted locally.";
   }
 });
 
@@ -353,11 +451,24 @@ globalRef.onSnapshot(doc => {
   if (!doc.exists) return;
 
   const total = doc.data().totalPresses;
-  globalCounter.innerText =
-    `Pressed globally: ${total.toLocaleString()} times`;
+  globalCounter.innerText = `Pressed globally: ${total.toLocaleString()} times`;
 
   const milestone = milestoneMessage(total);
   message.innerText = milestone ? milestone : pick(normalMessages);
+});
+
+// Initialize with current count
+globalRef.get().then(doc => {
+  if (doc.exists) {
+    const total = doc.data().totalPresses;
+    globalCounter.innerText = `Pressed globally: ${total.toLocaleString()} times`;
+  }
+});
+
+// Disable right-click context menu on button
+button.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  return false;
 });
 </script>
 

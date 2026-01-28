@@ -58,7 +58,7 @@
   <div id="message">The internet cannot be trusted.</div>
 
 <script>
-/* -------------------- FIREBASE SETUP -------------------- */
+/* -------------------- FIREBASE -------------------- */
 firebase.initializeApp({
   apiKey: "AIzaSyCE-7BlU_HfYRIeGciR76o4I78DT0qRk6E",
   authDomain: "do-not-press-cbc0e.firebaseapp.com",
@@ -68,9 +68,16 @@ firebase.initializeApp({
 const db = firebase.firestore();
 const globalRef = db.collection("global").doc("stats");
 
-/* -------------------- LOCAL USER STATE -------------------- */
+// Ensure doc exists
+globalRef.set({ totalPresses: 0 }, { merge: true });
+
+/* -------------------- LOCAL USER -------------------- */
 let count = parseInt(localStorage.getItem("pressCount")) || 0;
 let lastClickTime = Date.now();
+
+let seenMilestones = JSON.parse(
+  localStorage.getItem("seenGlobalMilestones") || "[]"
+);
 
 /* -------------------- ELEMENTS -------------------- */
 const button = document.getElementById("mainButton");
@@ -82,10 +89,10 @@ counter.innerText = `You pressed: ${count} times`;
 
 /* -------------------- MESSAGE SYSTEM -------------------- */
 const tones = {
-  low: ["Okay.", "Hmm.", "Alright.", "So.", "Right."],
-  medium: ["Again?", "Really?", "Careful.", "Interesting.", "Noted."],
-  high: ["Seriously.", "Why though.", "This is excessive.", "You’re committed."],
-  extreme: ["Stop.", "This is unhinged.", "I’m concerned.", "You chose chaos."]
+  low: ["Okay.", "Hmm.", "Alright.", "So."],
+  medium: ["Again?", "Really?", "Careful.", "Interesting."],
+  high: ["Seriously.", "Why though.", "This is excessive."],
+  extreme: ["Stop.", "This is unhinged.", "You chose chaos."]
 };
 
 const actions = [
@@ -93,24 +100,22 @@ const actions = [
   "you clicked again",
   "that just happened",
   "you did that",
-  "another press registered",
-  "you came back for more"
+  "another press registered"
 ];
 
 const endings = [
   "for no reason.",
   "without hesitation.",
-  "like it matters.",
-  "on purpose.",
   "again.",
-  "as expected."
+  "as expected.",
+  "on purpose."
 ];
 
 const rareMessages = [
   "You weren’t supposed to see this.",
   "Okay… now I’m watching.",
   "Statistically, this was inevitable.",
-  "You could’ve stopped. You didn’t."
+  "You could’ve stopped."
 ];
 
 function pick(arr) {
@@ -118,20 +123,51 @@ function pick(arr) {
 }
 
 function updateMessage(c, speed) {
-  let tone;
-  if (c < 5) tone = tones.low;
-  else if (c < 15) tone = tones.medium;
-  else if (c < 40) tone = tones.high;
-  else tone = tones.extreme;
+  let tone =
+    c < 5 ? tones.low :
+    c < 15 ? tones.medium :
+    c < 40 ? tones.high :
+    tones.extreme;
 
-  let sentence = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
+  let text = `${pick(tone)} ${pick(actions)} ${pick(endings)}`;
 
-  if (speed < 400) sentence += " That was fast.";
-  else if (speed > 3000) sentence += " You hesitated.";
+  if (speed < 400) text += " That was fast.";
+  if (speed > 3000) text += " You hesitated.";
 
-  if (Math.random() < 0.05) sentence = pick(rareMessages);
+  if (Math.random() < 0.05) text = pick(rareMessages);
 
-  message.innerText = sentence;
+  message.innerText = text;
+}
+
+/* -------------------- GLOBAL MILESTONES -------------------- */
+function milestoneMessage(total) {
+  if (total === 1000) {
+    return "1,000 presses. This is officially a problem.";
+  }
+  if (total === 2000) {
+    return "2,000 presses. Nobody learned anything.";
+  }
+  return `${total.toLocaleString()} presses reached. Still going.`;
+}
+
+function checkMilestone(total) {
+  if (total < 1000) return;
+  if (total % 500 !== 0) return;
+  if (seenMilestones.includes(total)) return;
+
+  message.innerText = milestoneMessage(total);
+
+  // Button reaction
+  button.style.transform = "scale(0.9)";
+  setTimeout(() => {
+    button.style.transform = "scale(1)";
+  }, 180);
+
+  seenMilestones.push(total);
+  localStorage.setItem(
+    "seenGlobalMilestones",
+    JSON.stringify(seenMilestones)
+  );
 }
 
 /* -------------------- CLICK HANDLER -------------------- */
@@ -151,16 +187,19 @@ button.addEventListener("click", async () => {
       totalPresses: firebase.firestore.FieldValue.increment(1)
     });
   } catch (e) {
-    console.error(e);
+    console.warn("Firebase unavailable");
   }
 });
 
-/* -------------------- GLOBAL LIVE COUNTER -------------------- */
+/* -------------------- LIVE GLOBAL LISTENER -------------------- */
 globalRef.onSnapshot(doc => {
-  if (doc.exists) {
-    globalCounter.innerText =
-      `Everyone pressed: ${doc.data().totalPresses.toLocaleString()} times`;
-  }
+  if (!doc.exists) return;
+
+  const total = doc.data().totalPresses;
+  globalCounter.innerText =
+    `Everyone pressed: ${total.toLocaleString()} times`;
+
+  checkMilestone(total);
 });
 </script>
 
